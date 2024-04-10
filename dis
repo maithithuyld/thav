@@ -1,0 +1,145 @@
+from datetime import datetime
+import json
+import random
+import string
+import time
+import requests, threading
+from hcaptcha import Hcaptcha
+import asyncio
+from mailtmapi import MailTM
+from secmail import Secmail
+
+def random_username():
+    letters = ''.join(random.choice(string.ascii_lowercase) for _ in range(5))
+    digits = ''.join(random.choice(string.digits) for _ in range(4))
+    username = letters + digits
+    return username
+
+def mail_tm():
+    password = "@Dung9999"
+    headers = {
+        'accept': 'application/ld+json',
+        'Content-Type': 'application/ld+json',
+    }
+    data = {
+        "address": f"{random_username()}@awgarstone.com",
+        "password": password
+    }
+
+    response = requests.post("https://api.mail.tm/accounts", headers=headers, data=json.dumps(data))
+
+    if response.json()['@context'] == '/contexts/Account':
+        mail = response.json()['address']
+        return mail, password
+# print(mail_tm())
+    
+class Tmproxy:
+    def __init__(self, key: str):
+        self.key = key
+    def get_proxy(self):
+        json_data = {
+            'api_key': self.key,
+            'sign': 'string',
+            'id_location': 0,
+        }
+
+        response = requests.post('https://tmproxy.com/api/proxy/get-new-proxy', headers={'accept': 'application/json','Content-Type': 'application/json'}, json=json_data)
+
+        json_data = {
+            'api_key': self.key,
+        }
+
+        response = requests.post('https://tmproxy.com/api/proxy/get-current-proxy', headers={'accept': 'application/json','Content-Type': 'application/json'}, json=json_data)
+        return response.json()['data']['https']
+    
+
+
+class Discord:
+    def __init__(self, mail: str):
+        self.mail = mail.split('|')[0]
+        self.passwordmail = mail.split('|')[1]
+        self.s = requests.Session()
+        self.list_name = open('name.txt', 'r', encoding='utf-8').read().splitlines()
+        self.s.proxies = {
+            'http': 'http://%s'%Tmproxy('e6c433cd6a6fd097b4b2064f52a8c2f1').get_proxy()
+        }
+        self.s.cookies.update({
+            '__dcfduid': 'e1d5294af41d11ee89b472b895cf8e11',
+            '__sdcfduid': 'e1d5294af41d11ee89b472b895cf8e1116c6a114abeb155b2b7df8e0ee1b90637beed530e92be857126723d8975935ed',
+            '_cfuvid': 'Hxq1CChOkMVyuHkwfBl4rzQEV0eIOheMAIsrqlRr6CA-1712416773657-0.0.1.1-604800000',
+            '__cfruid': '68ed91112721b252839a73c5825e39eb5c476d0c-1712416779',
+        })
+
+    def reg(self):
+        name = random.choice(self.list_name)
+        username = random_username()
+        headers = {
+            'Host': 'discord.com',
+            'X-Captcha-Key': Hcaptcha("4c672d35-0701-42b2-88c3-78380b0db560", "https://discord.com/").create_task(),
+            'X-Super-Properties': 'eyJvcyI6IkFuZHJvaWQiLCJicm93c2VyIjoiRGlzY29yZCBBbmRyb2lkIiwiZGV2aWNlIjoiQVNVU19aMDFRRCIsInN5c3RlbV9sb2NhbGUiOiJlbi1VUyIsImNsaWVudF92ZXJzaW9uIjoiMjIzLjE1IC0gcm4iLCJyZWxlYXNlX2NoYW5uZWwiOiJnb29nbGVSZWxlYXNlIiwiZGV2aWNlX3ZlbmRvcl9pZCI6IjRiZTEwMTA2LWIxNzctNDBiYS04OTJhLWQwNmJhYzE4ZGIzOCIsImJyb3dzZXJfdXNlcl9hZ2VudCI6IiIsImJyb3dzZXJfdmVyc2lvbiI6IiIsIm9zX3ZlcnNpb24iOiIyOCIsImNsaWVudF9idWlsZF9udW1iZXIiOjIyMzAxNTAwMTYzOTgyLCJjbGllbnRfZXZlbnRfc291cmNlIjpudWxsLCJkZXNpZ25faWQiOjJ9',
+            'X-Fingerprint': '',
+            'Accept-Language': 'en-US',
+            'X-Discord-Locale': 'en-US',
+            'X-Discord-Timezone': 'Asia/Shanghai',
+            'X-Debug-Options': 'bugReporterEnabled',
+            'User-Agent': 'Discord-Android/223015;RNA',
+            'Content-Type': 'application/json',
+        }
+
+        json_data = {
+            'fingerprint': '',
+            'email': self.mail,
+            'username': username,
+            'global_name': name,
+            'password': '@dung123Ab',
+            'invite': None,
+            'consent': True,
+            'date_of_birth': '19%s-10-02'%random.randint(70, 99),
+            'gift_code_sku_id': None,
+        }
+
+        response = self.s.post('https://discord.com/api/v9/auth/register', headers=headers, json=json_data)
+        current_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        try:
+            token = response.json()['token']
+            print(name, username, token)
+            open('acclive.txt', 'a', encoding='utf-8').write(f'{name}|{username}|{token}|{self.mail}|{self.passwordmail}|phone:no|avata:no|{current_date}\n')
+        except:
+            print("False %s"%self.mail)
+            open('accdie.txt', 'a', encoding='utf-8').write(f'{name}|{username}|{self.mail}|{self.passwordmail}|{current_date}\n')
+            return None
+
+def run(mail: str):
+    mail = '|'.join(mail)
+    print(mail)
+    Discord(mail).reg()
+while True:
+    soluong = 6
+    for i in range(soluong):
+        try:
+            mail = mail_tm()
+            threading.Thread(target=run, args=(mail, )).start() 
+        except:
+            soluong += 1
+    print("Nghỉ 240 giây...")
+    time.sleep(240)
+# file_acc = 'mail.txt'
+# data_mail = open(file_acc, 'r').read().splitlines()
+
+# # Khởi tạo Semaphore với số lượng luồng tối đa
+# soluong = 3
+
+# for i in range(0, len(data_mail), soluong):
+#     threads = []
+#     for mail in data_mail[i:i+soluong]:
+#         thread = threading.Thread(target=run, args=(mail,))
+#         thread.start()
+#         threads.append(thread)
+    
+#     # Đợi tất cả các luồng hoàn thành
+#     for thread in threads:
+#         thread.join()
+    
+#     # Nghỉ 240 giây
+#     print("Nghỉ 240 giây...")
+#     time.sleep(240)
